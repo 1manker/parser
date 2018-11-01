@@ -1,8 +1,18 @@
+--Lucas Manker
+--Cosc 3015
+--11/1/18
+
 module Parser where
 
     import Data.Char
 
     newtype Parser a  = MkP(String ->  [(a,String)])
+
+    data BinOp = Add | Times
+       deriving Show
+
+    data Exp = Const Int | BinExp BinOp Exp Exp
+       deriving Show
 
     parse :: Parser a -> String -> [(a,String)]
     parse (MkP f) i = f i
@@ -132,14 +142,6 @@ module Parser where
     symbol :: String -> Parser String
     symbol xs = token (string xs)
 
-    intp :: Parser Int
-    intp = do maybe symbol "("
-              symbol "-"
-              n <- natural
-              symbol ")"
-              return (-n)
-
-
 
     natlist :: Parser [Int]
     natlist = do symbol "["
@@ -149,6 +151,59 @@ module Parser where
                  symbol "]"
                  return (n:ns)
 
+    intp :: Parser Int
+    intp = do symbol "("
+              symbol "-"
+              n <- natural
+              symbol ")"
+              return (-n)
+              +++ natural
 
+    expr :: Parser Int
+    expr = do t <- term
+              do symbol "+"
+                 e <- expr
+                 return (t + e)  
+                 +++ return t                
+
+
+    term :: Parser Int
+    term = do f <- factor
+              do symbol "*"
+                 t <- term
+                 return (f * t)
+                 +++ return f
+
+    factor :: Parser Int
+    factor = do symbol "("
+                e <- expr
+                symbol ")"
+                return e
+                +++ natural
+
+    expr' :: Parser Exp
+    expr' = do t <- term'
+               do symbol "+"
+                  e <- expr'
+                  return (BinExp Add t e)  
+                 +++ return t 
+
+    term' :: Parser Exp
+    term' = do f <- factor'
+               do symbol "*"
+                  t <- term'
+                  return (BinExp Times f t)
+                +++ return f
+
+    constant :: Parser Exp
+    constant = do k <- natural 
+                  return (Const k)
+
+    factor' :: Parser Exp
+    factor' = do symbol "("
+                 e <- expr'
+                 symbol ")"
+                 return e
+                +++ constant
 
 
