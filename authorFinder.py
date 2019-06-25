@@ -5,13 +5,14 @@ import subprocess as sub
 import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
 import mysql.connector
 import re
 
 url = str(sys.argv[1])
-driver = webdriver.Chrome(executable_path="C://Program Files (x86)//Google//Chrome//chromedriver.exe")
+driver = webdriver.Chrome(ChromeDriverManager().install())
 driver.implicitly_wait(30)
 driver.get(url)
 options = Options()
@@ -30,7 +31,6 @@ def click_to_end():
 
 def click_on_paper():
     count = 1
-    finished = False
     time.sleep(2)
     click_to_end()
     time.sleep(3)
@@ -52,13 +52,12 @@ def click_through_papers():
         if not next_button.is_enabled():
             return
         pull_profiles()
-        time.sleep(180)
+        time.sleep(240)
         next_button.click()
         time.sleep(10)
 
 
 def pull_profiles():
-    f = codecs.open("C:\\Users\\Luke\\Desktop\\profList.csv", "a", "utf-8")
     connection = mysql.connector.connect(
         host="uwyobibliometrics.hopto.org",
         database="bibliometrics",
@@ -70,23 +69,20 @@ def pull_profiles():
     for x in soup.findAll('div', attrs={"class": "gs_a"}):
         for xs in x.findAll('a'):
             raw_link = str(xs.get('href'))
-            web_link = raw_link.split("user=")[1]
+            web_link = raw_link.split("=")[1]
             cursor = connection.cursor(prepared=True)
-            sql_query = "select * from linksearched where link = %s"
-            sql_query1 = "select * from linkqueue where link = %s"
+            sql_query = "select * from profiles where link = %s"
             sql_input = (web_link,)
             cursor.execute(sql_query, sql_input)
             searched = cursor.fetchall()
-            cursor.execute(sql_query1, sql_input)
-            queued = cursor.fetchall()
-            if len(searched) < 1 and len(queued) < 1:
-                sql_insert = "insert into linkqueue values(%s)"
+            if len(searched) < 1:
+                sql_insert = "insert into profiles (link, queue_status, search_status) values(%s, false, false)"
                 cursor.execute(sql_insert, sql_input)
                 print("ok, inserted!")
                 connection.commit()
-    f.close()
     connection.close()
 
 
 click_on_paper()
 driver.close()
+

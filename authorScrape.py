@@ -6,15 +6,22 @@ import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
+from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 import os
+import mysql.connector
+import os
+from selenium.common.exceptions import *
+
 
 url = str(sys.argv[1])
-driver = webdriver.Chrome(executable_path="C://Program Files (x86)//Google//Chrome//chromedriver.exe")
+driver = webdriver.Chrome(ChromeDriverManager().install())
 driver.implicitly_wait(30)
 driver.get(url)
 options = Options()
 options.headless = False
+link = url.split("=")[1] + "&hl"
+
 
 
 def click_to_end():
@@ -30,10 +37,7 @@ def click_to_end():
 def find_author():
     soup = BeautifulSoup(driver.page_source, 'lxml')
     author_bulk = soup.find('div', attrs={"id": "gsc_prf_in"})
-    this_author = author_bulk.text
-    this_author = this_author.split(' ')
-    this_author = this_author[1]
-    return this_author
+    return author_bulk.getText()
 
 
 def find_paper_title():
@@ -47,31 +51,52 @@ def find_paper_title():
 
 def iterate_through_pages():
     while len(driver.find_elements_by_xpath("//*[@id='gs_nm']/button[2]")) != 0:
-        page_button = driver.find_element_by_xpath("//*[@id='gs_nm']/button[2]").click()
+        driver.find_element_by_xpath("//*[@id='gs_nm']/button[2]").click()
         time.sleep(2)
 
 
 def iterate_through_links():
     index = 1
     author = find_author()
-    while len(driver.find_elements_by_xpath("//*[@id='gsc_a_b']/tr[" + str(index) + "]/td[1]/a")) != 0:
-        citation_button = driver.find_element_by_xpath("//*[@id='gsc_a_b']/tr[" + str(index) + "]/td[1]/a")
-        citation_button.click()
-        time.sleep(2)
-        title = find_paper_title()
-        data_group = pull_data()
-        exp_to_file(author, title, data_group)
-        citation_button = driver.find_element_by_xpath("//*[@id='gs_md_cita-d-x']").click()
-        time.sleep(2)
-        index += 1
-    return
+    try:
+        while len(driver.find_elements_by_xpath("//*[@id='gsc_a_b']/tr[" + str(index) + "]/td[1]/a")) != 0:
+            driver.find_element_by_xpath("//*[@id='gsc_a_b']/tr[" + str(index) + "]/td[1]/a").click()
+            time.sleep(2)
+            title = find_paper_title()
+            time.sleep(2)
+            data_group = pull_data()
+            time.sleep(4)
+            exp_to_db(author, title, data_group)
+            driver.find_element_by_xpath("//*[@id='gs_md_cita-d-x']").click()
+            time.sleep(2)
+            index += 1
+    except NoSuchWindowException:
+        print("Exited too early!")
+        exit(8)
+    finally:
+        return
 
 
-def exp_to_file(name, this_title, arr):
-    f = codecs.open("C://Users//Luke//Desktop//" + name + ".csv", "a+", "utf-8")
+def exp_to_db(name, this_title, arr):
+    if len(this_title) < 1:
+        return;
+    link = (sys.argv[1].split("="))[1]
+    desc = pull_desc()
+    connection = mysql.connector.connect(
+        host="uwyobibliometrics.hopto.org",
+        database="bibliometrics",
+        user="luke",
+        password="1234",
+        auth_plugin="mysql_native_password"
+    )
+    cursor = connection.cursor(prepared=True)
     for x in arr:
-        f.write(this_title + "," + x + "\n")
-    f.close()
+        sql_input = ("insert into citations (link, year, count, title, author, description)" +
+                     "values(%s, %s, %s, %s, %s, %s) on duplicate key update count = %s")
+        prep_inputs = (link + "&hl", x.split(",")[0], x.split(",")[1], this_title, name, desc, x.split(",")[1])
+        cursor.execute(sql_input, prep_inputs)
+        connection.commit()
+    connection.close()
     return
 
 
@@ -91,12 +116,65 @@ def pull_data():
     return data
 
 
-auth_name = find_author()
+def pull_desc():
+    new_soup = BeautifulSoup(driver.page_source, 'lxml')
+    desc = new_soup.find('div', attrs={"class": "gsh_csp"})
+    if desc is None:
+        return ''
+    return desc.getText()
+
+
+def update_prof():
+    new_soup = BeautifulSoup(driver.page_source, 'lxml')
+    inst = new_soup.findAll('div', attrs={"class": "gsc_prf_il"})
+    print(inst[0].getText())
+    link = (sys.argv[1].split("="))[1]
+    if len(inst) < 1:
+        return
+    connection = mysql.connector.connect(
+        host="uwyobibliometrics.hopto.org",
+        database="bibliometrics",
+        user="luke",
+        password="1234",
+        auth_plugin="mysql_native_password"
+    )
+    cursor = connection.cursor(prepared=True)
+    sql_input = "update profiles set author = %s, institution = %s where link = %s"
+    prep_input = (author, inst[0].getText(), link + "&hl")
+    cursor.execute(sql_input, prep_input)
+    connection.commit()
+    connection.close()
+
+
+def set_search_flag():
+    connection = mysql.connector.connect(
+        host="uwyobibliometrics.hopto.org",
+        database="bibliometrics",
+        user="luke",
+        password="1234",
+        auth_plugin="mysql_native_password"
+    )
+    cursor = connection.cursor(prepared=True)
+    sql_input = (link,)
+    add_s_flag = "update profiles set search_status = true, search_date = curdate() where link = %s"
+    cursor.execute(add_s_flag, sql_input)
+    connection.commit()
+    connection.close()
+
+
 click_to_end()
 time.sleep(1)
+author = find_author()
+update_prof()
 iterate_through_links()
-driver.close()
-time.sleep(10)
-os.system('python combo.py ' + auth_name)
+set_search_flag()
+try:
+    driver.close()
+except NoSuchWindowException:
+    print("exited too early!")
+    exit(8)
+finally:
+    exit(0)
+
 
 

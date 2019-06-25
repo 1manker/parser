@@ -9,6 +9,7 @@ from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
 import mysql.connector
 import os
+import subprocess
 
 connection = mysql.connector.connect(
         host="uwyobibliometrics.hopto.org",
@@ -18,34 +19,17 @@ connection = mysql.connector.connect(
         auth_plugin="mysql_native_password"
     )
 finished = False
-sql_query = "select * from linkqueue"
+sql_query = "select link from profiles where queue_status = false and search_status = false"
 cursor = connection.cursor(prepared=True)
 cursor.execute(sql_query)
 results = cursor.fetchall()
-if len(results) < 1:
-    finished = True
-while not finished:
-    time.sleep(5)
-    os.system('python authorScrape.py ' + "https://scholar.google.com/citations?user=" + results[0])
-    f = codecs.open("C://Users//Luke//Desktop//combo1.csv", "r", "utf-8")
-    for line in f:
-        temp = line.split(",")
-        sql_insert = "insert into citations values(%s, %s, %s)"
-        if len(temp) > 1:
-            input_strings = (temp[0], temp[1], temp[2].rstrip())
-            cursor.execute(sql_insert, input_strings)
-    f.close()
-    time.sleep(2)
-    f = open("C://Users//Luke//Desktop//combo1.csv", "w+")
-    f.truncate(0)
-    f.close()
-    connection.commit()
-    sql_drop = ("delete from linkqueue where link = " + results[0],)
-    cursor.execute(sql_drop)
-    sql_add = "insert into linksearched values(" + results[0] + ")"
-    cursor.execute(sql_add)
-    connection.commit()
-    results = cursor.fetchall()
-    if len(results) < 1:
-        finished = True
+time.sleep(5)
+add_q_flag = "update profiles set queue_status = true where link = %s"
+link = results[0][0].decode("utf-8")
+sql_input = (link,)
+cursor.execute(add_q_flag, sql_input)
+connection.commit()
 connection.close()
+os.system('python ' + 'authorScrape.py ' + "https://scholar.google.com/citations?user=" + results[0][0].decode("utf-8") + "=en&oi=sra")
+
+
