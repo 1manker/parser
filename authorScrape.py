@@ -14,13 +14,19 @@ import os
 from selenium.common.exceptions import *
 
 
-url = str(sys.argv[1])
-driver = webdriver.Chrome(ChromeDriverManager().install())
-driver.implicitly_wait(30)
-driver.get(url)
-options = Options()
-options.headless = False
-link = url.split("=")[1] + "&hl"
+def setup(input_link):
+    global url
+    url = str(input_link)
+    global driver
+    driver = webdriver.Chrome(ChromeDriverManager().install())
+    driver.implicitly_wait(30)
+    driver.get(url)
+    global options
+    options = Options()
+    options.headless = False
+    global link
+    link = url.split("=")[1]
+    execute_search()
 
 
 def click_to_end():
@@ -78,13 +84,13 @@ def iterate_through_links():
 def exp_to_db(name, this_title, arr):
     if len(this_title) < 1:
         return;
-    link = (sys.argv[1].split("="))[1]
+    link = (url.split("="))[1]
     desc = pull_desc()
     connection = mysql.connector.connect(
         host="uwyobibliometrics.hopto.org",
         database="bibliometrics",
         user="luke",
-        password="1234",
+        password="K8H,3Cuq]?HzG*W7",
         auth_plugin="mysql_native_password"
     )
     cursor = connection.cursor(prepared=True)
@@ -126,19 +132,20 @@ def update_prof():
     new_soup = BeautifulSoup(driver.page_source, 'lxml')
     inst = new_soup.findAll('div', attrs={"class": "gsc_prf_il"})
     print(inst[0].getText())
-    link = (sys.argv[1].split("="))[1]
+    link = (url.split("="))[1]
     if len(inst) < 1:
         return
     connection = mysql.connector.connect(
         host="uwyobibliometrics.hopto.org",
         database="bibliometrics",
         user="luke",
-        password="1234",
+        password="K8H,3Cuq]?HzG*W7",
         auth_plugin="mysql_native_password"
     )
     cursor = connection.cursor(prepared=True)
     sql_input = "update profiles set author = %s, institution = %s where link = %s"
-    prep_input = (author, inst[0].getText(), link + "&hl")
+    prep_input = (author, inst[0].getText(), link)
+    print(prep_input)
     cursor.execute(sql_input, prep_input)
     connection.commit()
     connection.close()
@@ -149,30 +156,31 @@ def set_search_flag():
         host="uwyobibliometrics.hopto.org",
         database="bibliometrics",
         user="luke",
-        password="1234",
+        password="K8H,3Cuq]?HzG*W7",
         auth_plugin="mysql_native_password"
     )
     cursor = connection.cursor(prepared=True)
     sql_input = (link,)
     add_s_flag = "update profiles set search_status = true, search_date = curdate() where link = %s"
+    print(sql_input)
     cursor.execute(add_s_flag, sql_input)
     connection.commit()
     connection.close()
 
 
-click_to_end()
-time.sleep(1)
-author = find_author()
-update_prof()
-iterate_through_links()
-set_search_flag()
-try:
-    driver.close()
-except NoSuchWindowException:
-    print("exited too early!")
-    exit(8)
-finally:
-    exit(0)
+def execute_search():
+    click_to_end()
+    time.sleep(1)
+    global author
+    author = find_author()
+    update_prof()
+    iterate_through_links()
+    set_search_flag()
+    try:
+        driver.close()
+    except NoSuchWindowException:
+        print("exited too early!")
+        exit(8)
 
 
 
