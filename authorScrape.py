@@ -23,7 +23,6 @@ options.headless = False
 link = url.split("=")[1] + "&hl"
 
 
-
 def click_to_end():
     more_button = driver.find_element_by_id("gsc_bpf_more")
     while more_button:
@@ -57,7 +56,6 @@ def iterate_through_pages():
 
 def iterate_through_links():
     index = 1
-    author = find_author()
     try:
         while len(driver.find_elements_by_xpath("//*[@id='gsc_a_b']/tr[" + str(index) + "]/td[1]/a")) != 0:
             driver.find_element_by_xpath("//*[@id='gsc_a_b']/tr[" + str(index) + "]/td[1]/a").click()

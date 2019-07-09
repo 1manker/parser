@@ -30,6 +30,7 @@ sql_input = (link,)
 cursor.execute(add_q_flag, sql_input)
 connection.commit()
 connection.close()
-os.system('python ' + 'authorScrape.py ' + "https://scholar.google.com/citations?user=" + results[0][0].decode("utf-8") + "=en&oi=sra")
 
+code = os.system('python ' + 'authorScrape.py ' + "https://scholar.google.com/citations\?user=" + results[0][0].decode("utf-8"))
 
+print(code)
