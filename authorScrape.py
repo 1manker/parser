@@ -6,7 +6,7 @@ import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
-from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.firefox import GeckoDriverManager
 from bs4 import BeautifulSoup
 import os
 import mysql.connector
@@ -18,7 +18,7 @@ def setup(input_link):
     global url
     url = str(input_link)
     global driver
-    driver = webdriver.Chrome(ChromeDriverManager().install())
+    driver = webdriver.Firefox(executable_path=GeckoDriverManager().install())
     driver.implicitly_wait(30)
     driver.get(url)
     global options
