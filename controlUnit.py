@@ -38,7 +38,7 @@ def check_queue():
         cursor.execute(add_q_flag)
         connection.commit()
         connection.close()
-        code = "https://scholar.google.com/citations?user=" + results[0][0]
+        code = "https://scholar.google.com/citations?user=" + (results[0][0].decode("utf-8"))
         authorScrape.setup(code)
 
 
