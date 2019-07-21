@@ -32,9 +32,9 @@ def check_queue():
             finished = True
             return
         time.sleep(5)
-        link = results[0][0]
-        add_q_flag = "update profiles set queue_status = true where link = " + link
-        #sql_input = (link,)
+        add_q_flag = "update profiles set queue_status = true where link = %s".encode("utf-8")
+        link = results[0][0].encode("utf-8")
+        sql_input = (link,)
         cursor.execute(add_q_flag)
         connection.commit()
         connection.close()
