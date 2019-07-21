@@ -32,10 +32,10 @@ def check_queue():
             finished = True
             return
         time.sleep(5)
-        add_q_flag = "update profiles set queue_status = true where link = %s"
         link = results[0][0]
-        sql_input = (link,)
-        cursor.execute(add_q_flag, sql_input)
+        add_q_flag = "update profiles set queue_status = true where link = " + link
+        #sql_input = (link,)
+        cursor.execute(add_q_flag)
         connection.commit()
         connection.close()
         code = "https://scholar.google.com/citations?user=" + results[0][0]
