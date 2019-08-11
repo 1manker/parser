@@ -23,7 +23,7 @@ def check_queue():
          password="K8H,3Cuq]?HzG*W7",
          auth_plugin="mysql_native_password"
         )
-        sql_query = "select link from profiles where queue_status = false and search_status = false"
+        sql_query = "select link from profiles where queue_status = false and search_date IS NULL"
         cursor = connection.cursor(prepared=True)
         cursor.execute(sql_query)
         results = cursor.fetchall()
@@ -32,15 +32,17 @@ def check_queue():
             finished = True
             return
         time.sleep(5)
-        add_q_flag = "update profiles set queue_status = true where link = %s".encode("utf-8")
+        add_q_flag = "update profiles set queue_status = true where link = %s"
         link = results[0][0]
         sql_input = (link,)
-        cursor.execute(add_q_flag)
+        cursor.execute(add_q_flag, sql_input)
         connection.commit()
         connection.close()
-        code = "https://scholar.google.com/citations?user=" + (results[0][0].decode("utf-8"))
+        code = "https://scholar.google.com/citations?user=" + link
         authorScrape.setup(code)
 
 
 while not finished:
     check_queue()
+
+

@@ -6,7 +6,7 @@ import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
-from webdriver_manager.firefox import GeckoDriverManager
+from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 import os
 import mysql.connector
@@ -18,7 +18,7 @@ def setup(input_link):
     global url
     url = str(input_link)
     global driver
-    driver = webdriver.Firefox(executable_path=GeckoDriverManager().install())
+    driver = webdriver.Chrome(ChromeDriverManager().install())
     driver.implicitly_wait(30)
     driver.get(url)
     global options
@@ -26,6 +26,7 @@ def setup(input_link):
     options.headless = False
     global link
     link = url.split("=")[1]
+    print(url)
     execute_search()
 
 
@@ -75,7 +76,7 @@ def iterate_through_links():
             time.sleep(2)
             index += 1
     except NoSuchWindowException:
-        print("Exited too early!")
+        err_code(8)
         exit(8)
     finally:
         return
@@ -83,8 +84,7 @@ def iterate_through_links():
 
 def exp_to_db(name, this_title, arr):
     if len(this_title) < 1:
-        return;
-    link = (url.split("="))[1]
+        return
     desc = pull_desc()
     connection = mysql.connector.connect(
         host="uwyobibliometrics.hopto.org",
@@ -95,9 +95,10 @@ def exp_to_db(name, this_title, arr):
     )
     cursor = connection.cursor(prepared=True)
     for x in arr:
-        sql_input = ("insert into citations (link, year, count, title, author, description)" +
-                     "values(%s, %s, %s, %s, %s, %s) on duplicate key update count = %s")
-        prep_inputs = (link + "&hl", x.split(",")[0], x.split(",")[1], this_title, name, desc, x.split(",")[1])
+        sql_input = ("insert into citations (link, year, count, title, author, description, pub_date)" +
+                     "values(%s, %s, %s, %s, %s, %s, %s) on duplicate key update count = %s")
+        prep_inputs = (link + "&hl", x.split(",")[0], x.split(",")[1], this_title, name, desc, x.split(",")[2],
+                       x.split(",")[1])
         cursor.execute(sql_input, prep_inputs)
         connection.commit()
     connection.close()
@@ -109,6 +110,12 @@ def pull_data():
     dates = []
     cit_count = []
     data = []
+    vals = []
+    for x in new_soup.findAll('div', attrs={"class": "gs_scl"}):
+        for y in x.findAll('div', attrs={"class": "gsc_vcd_value"}):
+            vals.append(y.text)
+    pub = vals[1]
+    pub = pub.split("/")[0]
     for x in new_soup.findAll('div', attrs={"id": "gsc_vcd_graph_bars"}):
         for y in x.findAll('a', href=True):
             temp = (y['href']).split("yhi=")
@@ -116,7 +123,7 @@ def pull_data():
     for x in new_soup.findAll('span', attrs={"class": "gsc_vcd_g_al"}):
         cit_count.append(x.text)
     for x in range(len(dates)):
-        data.append(dates[x] + "," + cit_count[x])
+        data.append(dates[x] + "," + cit_count[x] + "," + pub)
     return data
 
 
@@ -131,8 +138,6 @@ def pull_desc():
 def update_prof():
     new_soup = BeautifulSoup(driver.page_source, 'lxml')
     inst = new_soup.findAll('div', attrs={"class": "gsc_prf_il"})
-    print(inst[0].getText())
-    link = (url.split("="))[1]
     if len(inst) < 1:
         return
     connection = mysql.connector.connect(
@@ -145,7 +150,6 @@ def update_prof():
     cursor = connection.cursor(prepared=True)
     sql_input = "update profiles set author = %s, institution = %s where link = %s"
     prep_input = (author, inst[0].getText(), link)
-    print(prep_input)
     cursor.execute(sql_input, prep_input)
     connection.commit()
     connection.close()
@@ -161,14 +165,14 @@ def set_search_flag():
     )
     cursor = connection.cursor(prepared=True)
     sql_input = (link,)
-    add_s_flag = "update profiles set search_status = true, search_date = curdate() where link = %s"
-    print(sql_input)
+    add_s_flag = "update profiles set search_date = NOW() where link = %s"
     cursor.execute(add_s_flag, sql_input)
     connection.commit()
     connection.close()
 
 
 def execute_search():
+    err_code(1)
     click_to_end()
     time.sleep(1)
     global author
@@ -179,8 +183,22 @@ def execute_search():
     try:
         driver.close()
     except NoSuchWindowException:
-        print("exited too early!")
+        err_code(8)
         exit(8)
+    err_code(0)
 
 
-
+def err_code(code):
+    connection = mysql.connector.connect(
+        host="uwyobibliometrics.hopto.org",
+        database="bibliometrics",
+        user="luke",
+        password="K8H,3Cuq]?HzG*W7",
+        auth_plugin="mysql_native_password"
+    )
+    cursor = connection.cursor(prepared=True)
+    sql_input = (link,)
+    add_s_flag = "update profiles set err_flag =" + str(code) + " where link = %s"
+    cursor.execute(add_s_flag, sql_input)
+    connection.commit()
+    connection.close()

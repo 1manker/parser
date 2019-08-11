@@ -62,7 +62,7 @@ def pull_profiles():
         host="uwyobibliometrics.hopto.org",
         database="bibliometrics",
         user="luke",
-        password="1234",
+        password="K8H,3Cuq]?HzG*W7",
         auth_plugin="mysql_native_password"
     )
     soup = BeautifulSoup(driver.page_source, 'lxml')
@@ -70,13 +70,14 @@ def pull_profiles():
         for xs in x.findAll('a'):
             raw_link = str(xs.get('href'))
             web_link = raw_link.split("=")[1]
+            web_link = web_link.split("&")[0]
             cursor = connection.cursor(prepared=True)
             sql_query = "select * from profiles where link = %s"
             sql_input = (web_link,)
             cursor.execute(sql_query, sql_input)
             searched = cursor.fetchall()
             if len(searched) < 1:
-                sql_insert = "insert into profiles (link, queue_status, search_status) values(%s, false, false)"
+                sql_insert = "insert into profiles (link, queue_status) values(%s, false)"
                 cursor.execute(sql_insert, sql_input)
                 print("ok, inserted!")
                 connection.commit()
