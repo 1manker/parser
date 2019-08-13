@@ -16,6 +16,8 @@ finished = False
 
 
 def check_queue():
+        authorScrape.db_loop()
+        authorScrape.internet_loop()
         connection = mysql.connector.connect(
          host="uwyobibliometrics.hopto.org",
          database="bibliometrics",

@@ -12,18 +12,21 @@ import os
 import mysql.connector
 import os
 from selenium.common.exceptions import *
+import urllib3
+from urllib.request import urlopen
 
 
 def setup(input_link):
+    internet_loop()
     global url
     url = str(input_link)
-    global driver
-    driver = webdriver.Chrome(ChromeDriverManager().install())
-    driver.implicitly_wait(30)
-    driver.get(url)
     global options
     options = Options()
-    options.headless = False
+    options.headless = True
+    global driver
+    driver = webdriver.Chrome(ChromeDriverManager().install(), chrome_options=options)
+    driver.implicitly_wait(30)
+    driver.get(url)
     global link
     link = url.split("=")[1]
     print(url)
@@ -31,6 +34,7 @@ def setup(input_link):
 
 
 def click_to_end():
+    internet_loop()
     more_button = driver.find_element_by_id("gsc_bpf_more")
     while more_button:
         more_button = driver.find_element_by_id("gsc_bpf_more")
@@ -41,12 +45,14 @@ def click_to_end():
 
 
 def find_author():
+    internet_loop()
     soup = BeautifulSoup(driver.page_source, 'lxml')
     author_bulk = soup.find('div', attrs={"id": "gsc_prf_in"})
     return author_bulk.getText()
 
 
 def find_paper_title():
+    internet_loop()
     soup = BeautifulSoup(driver.page_source, 'lxml')
     paper_title = soup.find('a', attrs={"class": "gsc_vcd_title_link"})
     if paper_title is None:
@@ -56,12 +62,14 @@ def find_paper_title():
 
 
 def iterate_through_pages():
+    internet_loop()
     while len(driver.find_elements_by_xpath("//*[@id='gs_nm']/button[2]")) != 0:
         driver.find_element_by_xpath("//*[@id='gs_nm']/button[2]").click()
         time.sleep(2)
 
 
 def iterate_through_links():
+    internet_loop()
     index = 1
     try:
         while len(driver.find_elements_by_xpath("//*[@id='gsc_a_b']/tr[" + str(index) + "]/td[1]/a")) != 0:
@@ -83,8 +91,10 @@ def iterate_through_links():
 
 
 def exp_to_db(name, this_title, arr):
+    db_loop()
     if len(this_title) < 1:
         return
+    internet_loop()
     desc = pull_desc()
     connection = mysql.connector.connect(
         host="uwyobibliometrics.hopto.org",
@@ -136,6 +146,7 @@ def pull_desc():
 
 
 def update_prof():
+    db_loop()
     new_soup = BeautifulSoup(driver.page_source, 'lxml')
     inst = new_soup.findAll('div', attrs={"class": "gsc_prf_il"})
     if len(inst) < 1:
@@ -156,6 +167,7 @@ def update_prof():
 
 
 def set_search_flag():
+    db_loop()
     connection = mysql.connector.connect(
         host="uwyobibliometrics.hopto.org",
         database="bibliometrics",
@@ -189,6 +201,7 @@ def execute_search():
 
 
 def err_code(code):
+    db_loop()
     connection = mysql.connector.connect(
         host="uwyobibliometrics.hopto.org",
         database="bibliometrics",
@@ -202,3 +215,47 @@ def err_code(code):
     cursor.execute(add_s_flag, sql_input)
     connection.commit()
     connection.close()
+
+
+def internet_on():
+    try:
+        response = urlopen('https://www.google.com/', timeout=10)
+        return True
+    except:
+        return False
+
+
+def db_on():
+    try:
+        db = mysql.connector.connect(
+         host="uwyobibliometrics.hopto.org",
+         database="bibliometrics",
+         user="luke",
+         password="K8H,3Cuq]?HzG*W7",
+         auth_plugin="mysql_native_password"
+        )
+        cursor = db.cursor()
+        cursor.execute("SELECT VERSION()")
+        results = cursor.fetchone()
+        if results:
+            db.close()
+            return True
+        else:
+            return False
+    except mysql.connector.Error as err:
+        print("ERROR IN CONNECTION")
+    return False
+
+
+def db_loop():
+    if not db_on():
+        print("connection to database lost, retrying in 10 minutes")
+        time.sleep(600)
+        db_loop()
+
+
+def internet_loop():
+    if not internet_on():
+        print("network connection lost, retrying in 10 minutes")
+        time.sleep(600)
+        internet_loop()
