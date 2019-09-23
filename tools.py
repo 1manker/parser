@@ -1,6 +1,8 @@
 import mysql.connector
 import subprocess as sub
 
+prof_name = ''
+
 
 def calc_years_active(link):
     connection = mysql.connector.connect(
@@ -47,9 +49,13 @@ def calc_years_active(link):
         f.write("Year,H \n")
         for x in h_index:
             f.write(str(x[0]) + "," + str(x[1]) + "\n")
+    sql_query = "select author from profiles where link = %s"
+    sql_input = (link,)
+    cursor.execute(sql_query, sql_input)
+    results = cursor.fetchall()
+    return results[0][0]
 
 
-
-
-calc_years_active("ZdvLBUwAAAAJ")
-sub.call(['C:/Program Files/R/R-3.6.0/bin/Rscript',  '--vanilla', 'C:/Users/Luke/Desktop/parser/indvGraph.r'])
+prof_name = calc_years_active("ZH31nVgAAAAJ")
+sub.call(['C:/Program Files/R/R-3.6.0/bin/Rscript',  '--vanilla', 'C:/Users/Luke/Desktop/parser/indvGraph.r',
+          prof_name])
