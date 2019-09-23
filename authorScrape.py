@@ -30,6 +30,7 @@ def setup(input_link):
     global link
     link = url.split("=")[1]
     print(url)
+    print(link)
     execute_search()
 
 
@@ -107,7 +108,7 @@ def exp_to_db(name, this_title, arr):
     for x in arr:
         sql_input = ("insert into citations (link, year, count, title, author, description, pub_date)" +
                      "values(%s, %s, %s, %s, %s, %s, %s) on duplicate key update count = %s")
-        prep_inputs = (link + "&hl", x.split(",")[0], x.split(",")[1], this_title, name, desc, x.split(",")[2],
+        prep_inputs = (link, x.split(",")[0], x.split(",")[1], this_title, name, desc, x.split(",")[2],
                        x.split(",")[1])
         cursor.execute(sql_input, prep_inputs)
         connection.commit()

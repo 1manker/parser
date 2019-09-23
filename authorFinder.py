@@ -12,11 +12,11 @@ import mysql.connector
 import re
 
 url = str(sys.argv[1])
-driver = webdriver.Chrome(ChromeDriverManager().install())
-driver.implicitly_wait(30)
-driver.get(url)
 options = Options()
 options.headless = True
+driver = webdriver.Chrome(ChromeDriverManager().install(), chrome_options=options)
+driver.implicitly_wait(30)
+driver.get(url)
 
 
 def click_to_end():
@@ -52,7 +52,7 @@ def click_through_papers():
         if not next_button.is_enabled():
             return
         pull_profiles()
-        time.sleep(240)
+        time.sleep(300)
         next_button.click()
         time.sleep(10)
 
