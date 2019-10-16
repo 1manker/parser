@@ -1,3 +1,4 @@
+#Lucas Manker
 import mysql.connector
 import subprocess as sub
 
